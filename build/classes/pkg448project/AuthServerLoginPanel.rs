@@ -1,0 +1,2 @@
+Chat.AuthServerLoginPanel
+Chat.AuthServerLoginPanel$1

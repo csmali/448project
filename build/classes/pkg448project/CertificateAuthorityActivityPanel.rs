@@ -1,0 +1,2 @@
+Chat.CertificateAuthorityActivityPanel$1
+Chat.CertificateAuthorityActivityPanel

@@ -1,0 +1,2 @@
+Chat.CertificateAuthority$1
+Chat.CertificateAuthority

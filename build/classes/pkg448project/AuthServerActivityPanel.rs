@@ -1,0 +1,2 @@
+Chat.AuthServerActivityPanel$1
+Chat.AuthServerActivityPanel
