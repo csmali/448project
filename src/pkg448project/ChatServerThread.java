@@ -132,27 +132,4 @@ public class ChatServerThread extends Thread {
 
     }
 
-    /*  public static String decrypt(char[] encryptedText) throws Exception {
-
-        System.out.println(encryptedText);
-
-        byte[] encryptedTextBytes = DatatypeConverter.parseBase64Binary(new String(encryptedText));
-        SecretKeySpec secretSpec = new SecretKeySpec(secretKey.getEncoded(), "AES");
-
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        cipher.init(Cipher.DECRYPT_MODE, secretSpec, new IvParameterSpec(ivBytes));
-
-        byte[] decryptedTextBytes = null;
-
-        try {
-            decryptedTextBytes = cipher.doFinal(encryptedTextBytes);
-        }   catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
-        }   catch (BadPaddingException e) {
-            e.printStackTrace();
-        }
-
-        return new String(decryptedTextBytes);
-
-    }*/
 }

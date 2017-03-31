@@ -69,11 +69,11 @@ public class ChatClientThread extends Thread {
 
                 System.out.println("Received Encrypted Message : " + receivedEncryptedMsg);
 
-                String decryptedMessage = decrypt(receivedEncryptedMsg.toCharArray());
-                System.out.println("Decrypted : " + decrypt(receivedEncryptedMsg.toCharArray()));
-                System.out.println("Received Hash : " + receivedHash);
-                System.out.println("Calculated Hash : " + hmac);
                 if (receivedHash.equals(hmac)) {
+                    String decryptedMessage = decrypt(receivedEncryptedMsg.toCharArray());
+                    System.out.println("Decrypted : " + decrypt(receivedEncryptedMsg.toCharArray()));
+                    System.out.println("Received Hash : " + receivedHash);
+                    System.out.println("Calculated Hash : " + hmac);
                     System.out.println("Hashes are same! Decrypted Message and hash will be sent to chat screen");
                     consumeMessage(decryptedMessage + "\n");
 

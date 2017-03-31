@@ -20,6 +20,9 @@ import java.math.BigInteger;
 import java.net.*;
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 //  Crypto
 import java.security.*;
@@ -186,6 +189,32 @@ public class ChatClient {
 
             _in = new BufferedReader(new InputStreamReader(
                     _socket.getInputStream()));
+            _out.println("Hello" + loginName);
+            String line;
+            int randomX = 0;
+            String randomX2String;
+            boolean connectionEstablished = false;
+            while (!connectionEstablished) {
+                while ((line = _in.readLine()) != null) {
+                    randomX = Integer.parseInt(line);
+                    connectionEstablished = true;
+                    break;
+                }
+
+                String str = String.valueOf(password);
+                String finalHash = str;
+                for (int i = 0; i < 15; i++) {
+                    finalHash = sha1(finalHash);
+                }
+                randomX2String = randomX + "";
+
+                Path path = Paths.get("serverPublicKey");
+                byte[] getEncoded = Files.readAllBytes(path);
+                _out.println(xor(finalHash, randomX2String));
+
+           //     sign(xor(finalHash, randomX2String), getEncoded);
+
+            }
 
             _layout.show(_appFrame.getContentPane(), "ChatRoom");
 
@@ -300,6 +329,43 @@ public class ChatClient {
         fos.write(secretKey.getEncoded());
         fos.close();
         return DatatypeConverter.printBase64Binary(encryptedTextBytes);
+    }
+/*
+    public static String sign(char[] plaintext,byte[] array) throws Exception {
+
+        SecretKeySpec secretSpec = new SecretKeySpec(array, "AES");
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, secretSpec);
+        AlgorithmParameters params = cipher.getParameters();
+        ivBytes = params.getParameterSpec(IvParameterSpec.class).getIV();
+        byte[] encryptedTextBytes = cipher.doFinal(String.valueOf(plaintext).getBytes("UTF-8"));
+        try (PrintWriter out = new PrintWriter("secretKeyString.txt")) {
+            out.println(secretKey.getEncoded());
+        }
+        FileOutputStream fos = new FileOutputStream("ivbytes");
+    
+        return DatatypeConverter.printBase64Binary(encryptedTextBytes);
+    }*/
+
+    public static String sha1(String input) throws NoSuchAlgorithmException {
+        MessageDigest mDigest = MessageDigest.getInstance("SHA1");
+        byte[] result = mDigest.digest(input.getBytes());
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i < result.length; i++) {
+            sb.append(Integer.toString((result[i] & 0xff) + 0x100, 16).substring(1));
+        }
+
+        return sb.toString();
+    }
+
+    public static String xor(String s, String key) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            sb.append((char) (s.charAt(i) ^ key.charAt(i % key.length())));
+        }
+        String result = sb.toString();
+        return result;
     }
 
 }
