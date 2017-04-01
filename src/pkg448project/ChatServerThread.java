@@ -32,7 +32,6 @@ public class ChatServerThread extends Thread {
 
     private Socket _socket = null;
     private ChatServer _server = null;
-    private Hashtable _records = null;
     private Hashtable _recordsA = null;
     private Hashtable _recordsB = null;
     private Hashtable _recordsSending = null;
@@ -69,7 +68,6 @@ public class ChatServerThread extends Thread {
         super("ChatServerThread");
         _server = server;
         _socket = socket;
-        _records = server.getClientRecords();
         _recordsA = server.getClientRecordsA();
         _recordsB = server.getClientRecordsB();
         clientRecord = new ClientRecord(socket);
