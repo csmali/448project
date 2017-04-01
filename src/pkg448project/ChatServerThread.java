@@ -33,6 +33,10 @@ public class ChatServerThread extends Thread {
     private Socket _socket = null;
     private ChatServer _server = null;
     private Hashtable _records = null;
+    private Hashtable _recordsA = null;
+    private Hashtable _recordsB = null;
+    private Hashtable _recordsSending = null;
+
     private static final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
 
     private static String salt;
@@ -40,6 +44,7 @@ public class ChatServerThread extends Thread {
     private static int keySize = 256;
     static byte[] ivBytes;
     static SecretKey secretKey;
+    ClientRecord clientRecord;
 
     private static String toHexString(byte[] bytes) {
         Formatter formatter = new Formatter();
@@ -65,6 +70,10 @@ public class ChatServerThread extends Thread {
         _server = server;
         _socket = socket;
         _records = server.getClientRecords();
+        _recordsA = server.getClientRecordsA();
+        _recordsB = server.getClientRecordsB();
+        clientRecord = new ClientRecord(socket);
+
     }
 
     public void run() {
@@ -80,7 +89,13 @@ public class ChatServerThread extends Thread {
 
             while ((receivedMsg = in.readLine()) != null) {
 
-                Enumeration theClients = _records.elements();
+                if (_recordsA.contains(clientRecord)) {
+                    _recordsSending = _recordsA;
+                } else {
+                    _recordsSending = _recordsB;
+
+                }
+                Enumeration theClients = _recordsSending.elements();
 
                 while (theClients.hasMoreElements()) {
 

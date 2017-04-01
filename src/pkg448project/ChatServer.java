@@ -31,6 +31,8 @@ public class ChatServer {
 //      private Hashtable _clientsRoomA;
 //      private Hashtable _clientsRoomB;
     private int _clientID = 0;
+    private Hashtable _clientsRoomA;
+    private Hashtable _clientsRoomB;
     private int _port;
     private String _hostName = null;
     // Some hints: security related fields.
@@ -187,6 +189,16 @@ public class ChatServer {
     public Hashtable getClientRecords() {
 
         return _clients;
+    }
+
+    public Hashtable getClientRecordsA() {
+
+        return _clientsRoomA;
+    }
+
+    public Hashtable getClientRecordsB() {
+
+        return _clientsRoomB;
     }
 
 }
