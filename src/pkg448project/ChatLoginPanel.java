@@ -18,6 +18,8 @@ public class ChatLoginPanel extends JPanel {
     JPasswordField _passwordField;
     JTextField _serverHostField;
     JTextField _serverPortField;
+    JTextField _serverRoomField;
+
     JTextField _caHostField;
     JTextField _caPortField;
     JTextField _keyStoreNameField;
@@ -54,6 +56,7 @@ public class ChatLoginPanel extends JPanel {
         addLabel(gridBag, "Server Port: ", SwingConstants.LEFT, 1, 6, 1, 1);
         addLabel(gridBag, "CA Host Name: ", SwingConstants.LEFT, 1, 7, 1, 1);
         addLabel(gridBag, "CA Port: ", SwingConstants.LEFT, 1, 8, 1, 1);
+        addLabel(gridBag, "Room: ", SwingConstants.LEFT, 1, 9, 1, 1);
 
         _loginNameField = new JTextField();
         addField(gridBag, _loginNameField, 2, 1, 1, 1);
@@ -77,11 +80,13 @@ public class ChatLoginPanel extends JPanel {
         _caPortField = new JTextField();
         addField(gridBag, _caPortField, 2, 8, 1, 1);
 
+        _serverRoomField = new JTextField();
+        addField(gridBag, _serverRoomField, 2, 9, 1, 1);
+
         _errorLabel = addLabel(gridBag, " ", SwingConstants.CENTER,
                 1, 9, 2, 1);
 
         // just for testing purpose
-
         _loginNameField.setText("cs470");
         _passwordField.setText("123456");
         _keyStoreNameField.setText("client1");
@@ -90,7 +95,7 @@ public class ChatLoginPanel extends JPanel {
         _caPortField.setText("6666");
         _serverHostField.setText("localhost");
         _serverPortField.setText("7777");
-
+        _serverRoomField.setText("A");
         _errorLabel.setForeground(Color.red);
 
         _connectButton = new JButton("Connect");
@@ -154,6 +159,8 @@ public class ChatLoginPanel extends JPanel {
         String serverHost = _serverHostField.getText();
         String caHost = _caHostField.getText();
 
+        String serverRoom = _serverRoomField.getText();
+
         if (loginName.equals("")
                 || password.length == 0
                 || keyStoreName.equals("")
@@ -194,7 +201,8 @@ public class ChatLoginPanel extends JPanel {
                 caHost,
                 caPort,
                 serverHost,
-                serverPort)) {
+                serverPort,
+                serverRoom)) {
 
             case ChatClient.SUCCESS:
                 //  Nothing happens, this panel is now hidden
@@ -211,7 +219,6 @@ public class ChatLoginPanel extends JPanel {
         }
 
         System.out.println("We finished connecting to ...");
-
 
     }
 }

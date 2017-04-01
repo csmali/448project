@@ -171,7 +171,7 @@ public class ChatClient {
     public int connect(String loginName, char[] password,
             String keyStoreName, char[] keyStorePassword,
             String caHost, int caPort,
-            String serverHost, int serverPort) {
+            String serverHost, int serverPort,String serverRoom) {
 
         try {
 
