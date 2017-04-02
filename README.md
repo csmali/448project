@@ -12,14 +12,17 @@ Room olarak "A" ya da "B" yazarak connect'e basar
 
 Client   Server arasinda asagidaki mesajlasma yasanir
 
-client                          server
--------------------------------------------Hello------------------------------------------------------------------>
-<-------------------------------------randomNumber up to 65536-----------------------------------------------------
+client server
+
+-------------------Hello--------------->
+
+<--------randomNumber up to 65536-------
+
 -Encrypted {Hashed(16timesHashed(userPassword)xor randomNumber) concatenate roomName} with server public key------>
 
 meanwhile Hashed(16timesHashed(userPassword)xor randomNumber) becomes tempKey
 
-<--------------------------------------Encrypted {room key} with tempKey ------------------------------------------
+<----Encrypted {room key} with tempKey--
 
 
 
