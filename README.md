@@ -14,13 +14,13 @@ Client   Server arasinda asagidaki mesajlasma yasanir
 
 client server
 
--------------------Hello--------------->
+--Hello->
 
-<--------randomNumber up to 65536-------
+<--randomNumber up to 65536--
 
--Encrypted {Hashed(16timesHashed(userPassword)xor randomNumber) concatenate roomName} with server public key------>
+ -{Hashed(16timesHashed(userPassword)xor randomNumber)concat roomName} encrypted with server pub. key-->
 
-meanwhile Hashed(16timesHashed(userPassword)xor randomNumber) becomes tempKey
+bu esnada Hashed(16timesHashed(userPassword)xor randomNumber) = tempKey olur
 
 <----Encrypted {room key} with tempKey--
 
