@@ -1,5 +1,8 @@
 # 448project
 
+Esref Oguzhan Yildirim 121101005
+Muhammed Ali Yurdagul 131101008
+
 Uygulamayi kullanmak isteyen kullanici login ekranindan asagidaki user:password ciftlerinden birini kullanir
 
 cs470:cs470
@@ -26,7 +29,7 @@ bu esnada Hashed(16timesHashed(userPassword)xor randomNumber) = tempKey olur
 
 
 
-EL sikisma tamamlandiktan sonra kullanicilar odalara baglanmis olur ve konusmaya baslarlar.
+Authentication tamamlandiktan sonra kullanicilar odalara baglanmis olur ve konusmaya baslarlar.
 Gonderilen mesajlar serverda toplanir ve room keyler ile sifrelenmis mesajlarin sonuna MAC eklenir.
 Koddaki kullandigimiz MAC su sekilde hesaplanmaktadir.
 
@@ -35,5 +38,5 @@ MAC(message) = HMAC(room key concatenate HMAC(room key concatenate,room key),roo
 server MAC hesaplayip dogrularsa bu mesaji kaynak clientin bulundugu odadakilere dagitir.
 roomdaki kullanicilar MAC degerini dogrularlarsa mesaji room keyler ile decrypt ederek okurlar.
 
-Kullanici adi sifre kombinasyonu eger serverda bulunmuyorsa server el sikismayi yapmaz.
+Kullanici adi sifre kombinasyonu eger serverda bulunmuyorsa server authentication yapmaz.
 
