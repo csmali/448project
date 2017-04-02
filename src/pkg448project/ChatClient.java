@@ -1,10 +1,3 @@
-//  ChatClient.java
-//
-//  Modified 1/30/2000 by Alan Frindell
-//  Last modified 2/18/2003 by Ting Zhang 
-//  Last modified : Priyank Patel <pkpatel@cs.stanford.edu>
-//
-//  Chat Client starter application.
 package Chat;
 
 //  AWT/Swing
@@ -14,30 +7,12 @@ import javax.swing.*;
 
 //  Java
 import java.io.*;
-import java.math.BigInteger;
 
 // socket
 import java.net.*;
-import java.io.*;
-import java.net.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 //  Crypto
 import java.security.*;
-import java.security.cert.*;
-import java.security.spec.*;
-import java.security.interfaces.*;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Formatter;
-import javax.crypto.*;
-import javax.crypto.spec.*;
-import javax.crypto.interfaces.*;
-import javax.security.auth.x500.*;
-import javax.xml.bind.DatatypeConverter;
 
 public class ChatClient {
 
@@ -45,6 +20,7 @@ public class ChatClient {
     public static final int CONNECTION_REFUSED = 1;
     public static final int BAD_HOST = 2;
     public static final int ERROR = 3;
+
     String _loginName;
     ChatServer _server;
     ChatClientThread _thread;
@@ -57,13 +33,11 @@ public class ChatClient {
 
     Socket _socket = null;
     SecureRandom secureRandom;
-    KeyStore clientKeyStore;
-    KeyStore caKeyStore;
 
     private String roomKey = "";
 
     //    KeyManagerFactory keyManagerFactory;
-//    TrustManagerFactory trustManagerFactory;
+    //    TrustManagerFactory trustManagerFactory;
     //  ChatClient Constructor
     //
     //  empty, as you can see.
@@ -104,7 +78,7 @@ public class ChatClient {
     //  Component initialization
     private void initComponents() throws Exception {
 
-        _appFrame = new JFrame("CS255 Chat");
+        _appFrame = new JFrame("BIL448 Chat");
         _layout = new CardLayout();
         _appFrame.getContentPane().setLayout(_layout);
         _loginPanel = new ChatLoginPanel(this);
@@ -148,8 +122,6 @@ public class ChatClient {
     //  The other is your authentication password on the CA.
     //
     public int connect(String loginName, char[] password,
-            String keyStoreName, char[] keyStorePassword,
-            String caHost, int caPort,
             String serverHost, int serverPort,
             String room) {
 
@@ -170,37 +142,48 @@ public class ChatClient {
             _in = new BufferedReader(new InputStreamReader(
                     _socket.getInputStream()));
 
+            //Server'a baglanmanin ilk adimi Hello mesaji gondermektir.
+            //Bu mesajda client, Hello ve client name'i server'a gonderir.
             _out.println("Hello" + loginName);
 
             String line = "";
             int randomX = 0;
-            String finalHash = "";
             boolean connectionEstablished = false;
             int connectionStage = 0;
             String tempKey = "";
             while (!connectionEstablished) {
 
-                //Eger random int gelmi�se
+                /*Eger server'dan beklenen random integer gelmisse
+                 * Password ilgili islemlere sokulur. Ardina room Name eklenir ve server'a gonderilir.
+                 * Gecici key belirlenir.
+                 */
                 if (connectionStage == 0 && (line = _in.readLine()) != null) {
-                    System.out.println(line);
-
                     randomX = Integer.parseInt(line);
+                    if (randomX == 77777) {
+                        _socket.close();
+                        System.out.println("Unknown User Name");
+                        return 77777;
+                    }
                     String str = String.valueOf(password);
                     for (int i = 0; i < 15; i++) {
                         str = CipherAct.sha1(str);
                     }
-                    finalHash = CipherAct.sha1(CipherAct.xor(str, randomX + ""));
-                    String encrypted = CipherAct.encryptWithPublic(finalHash + room);
-                    System.out.println("" + encrypted);
-                    tempKey = new String(encrypted);
-                    System.out.println(encrypted.length() + "  tempkeylength");
+                    tempKey = CipherAct.sha1(CipherAct.xor(str, randomX + ""));
+                    String encrypted = CipherAct.encryptWithPublic(tempKey + room);
+
                     connectionStage++;
                     _out.println(encrypted);
-                } //Sifreli bir sekilde roomKey gelmi�se
-                else if (connectionStage == 1 && (line = _in.readLine()) != null) {
-                    System.out.println("DECRYPTION KEY" + finalHash.substring(0, 32));
-                    roomKey = new String(CipherAct.decrypt(line, finalHash.substring(0, 32)));
-                    System.out.println("roomKey" + roomKey);
+                } /* Room anahtari gelmisse
+                 * tempKey kullanilarak decrypt edilir.
+                 * Ardindan connection saglanir ve loop sona erer.
+                 */ else if (connectionStage == 1 && (line = _in.readLine()) != null) {
+                    if (line.equals("88888")) {
+                        _socket.close();
+                        System.out.println("Wrong Password");
+                        return 88888;
+                    }
+                    roomKey = new String(CipherAct.decrypt(line, tempKey.substring(0, 32)));
+
                     connectionEstablished = true;
                     connectionStage = 0;
                 }
@@ -246,19 +229,20 @@ public class ChatClient {
     public void sendMessage(String msg) {
 
         try {
+
+            //Client mesaj olarak kendi ismi + > karakteri + mesaji gonderir.
             msg = msg.substring(0, msg.length() - 1);
             msg = _loginName + "> " + msg;
 
+            //Mesaj butun olarak oda anahtari ile sifrelenir.
             String encryptedMsg = CipherAct.encrypt(msg, roomKey);
-            String encrypted = encryptedMsg;
 
-            String hmac = CipherAct.calculateRFC2104HMAC((roomKey + CipherAct.calculateRFC2104HMAC(roomKey + encrypted, roomKey)), roomKey);
+            //Bu mesajin HMAC'i alinir. Ve mesaj + HMAC cifti olarak server'a iletilir.
+            String hmac = CipherAct.calculateRFC2104HMAC((roomKey + CipherAct.calculateRFC2104HMAC(roomKey + encryptedMsg, roomKey)), roomKey);
 
-            encrypted = new String(encrypted) + hmac;
-            System.out.println("msg" + msg);
-            System.out.println("encrypted" + encrypted);
+            String encryptedWithHMAC = new String(encryptedMsg) + hmac;
 
-            _out.println(encrypted);
+            _out.println(encryptedWithHMAC);
 
         } catch (Exception e) {
 

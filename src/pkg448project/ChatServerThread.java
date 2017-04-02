@@ -58,6 +58,8 @@ public class ChatServerThread extends Thread {
         roomKeyB = server.getRoomKeyB();
     }
 
+    /*Hashtablelara bakarak clientin hangi rooma kayitli oldugunu bulan metod 
+    eger A recordlarinin oldugu tabledaysa true doner degilse false doner */
     public boolean isINARecords(ClientRecord clientRecord) {
         Enumeration theClients = _recordsA.elements();
         while (theClients.hasMoreElements()) {
@@ -68,7 +70,11 @@ public class ChatServerThread extends Thread {
         }
         return false;
     }
-
+    
+    
+    /*Bir mesaj geldikten sonra mesaj kaynaginin bulundugu roomu tespit ederek bu roomda bulunan 
+    kullanicilarin tamamina mesajin iletimi yapilir. Gelen mesaja bakilip hash hesaplamasi yapilir eger hash dogruysa
+    mesajlar clientlara iletilir*/
     public void run() {
 
         try {
@@ -81,9 +87,7 @@ public class ChatServerThread extends Thread {
             String secretKeyString = "";
             String AorB = "A";
             while ((receivedMsg = in.readLine()) != null) {
-                System.out.println("clientRecord");
 
-                System.out.println(clientRecord.toString());
 
                 if (isINARecords(clientRecord)) {
                     _recordsSending = _recordsA;
@@ -97,7 +101,6 @@ public class ChatServerThread extends Thread {
                 Enumeration theClients = _recordsSending.elements();
 
                 while (theClients.hasMoreElements()) {
-                    System.out.println(receivedMsg);
                     ClientRecord c = (ClientRecord) theClients.nextElement();
 
                     Socket socket = c.getClientSocket();

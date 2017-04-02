@@ -43,6 +43,8 @@ public class ChatClientThread extends Thread {
         roomKey = client.getRoomKey();
     }
 
+    /*server threadden gelen mesajlar hashlere bakilip hashler dogru ise room key kullanilarak decrypt edilir
+    decrypt edilen mesajlar panele basilir. */
     public void run() {
 
         try {
@@ -58,9 +60,7 @@ public class ChatClientThread extends Thread {
           
 
             while ((receivedMsg = in.readLine()) != null) {
-                System.out.println("receivedMsg" + receivedMsg);
 
-                System.out.println("SecretKeyEncoded" + secretKeyString);
                 String hmac = CipherAct.calculateRFC2104HMAC((roomKey + CipherAct.calculateRFC2104HMAC(roomKey + receivedMsg.substring(0, receivedMsg.length() - 40), roomKey)), roomKey);
                 String receivedEncryptedMsg = receivedMsg.substring(0, receivedMsg.length() - 40);
                 String receivedHash = receivedMsg.substring(receivedEncryptedMsg.length(), receivedMsg.length());

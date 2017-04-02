@@ -92,6 +92,7 @@ public class CipherAct {
     }
 
     /*
+    room keyleri kullanarak mesaj atarken kullandigimiz HMAC fonksiyonu
      */
     public static String calculateRFC2104HMAC(String data, String key)
             throws SignatureException, NoSuchAlgorithmException, InvalidKeyException {
@@ -102,6 +103,7 @@ public class CipherAct {
     }
 
     /*
+    Java kutuphanelerini kullanarak basit hash hesabi icin keye gerek duymadigimiz sha1 metodu
      */
     public static String sha1(String input) throws NoSuchAlgorithmException {
         MessageDigest mDigest = MessageDigest.getInstance("SHA1");
@@ -115,6 +117,7 @@ public class CipherAct {
     }
 
     /*
+    Authentication islemi esnasinda  kullanilan xor islemi
      */
     public static String xor(String s, String key) {
         StringBuilder sb = new StringBuilder();

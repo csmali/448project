@@ -1,61 +1,45 @@
-//
-// ChatServer.java
-// Created by Ting on 2/18/2003
-// Modified : Priyank K. Patel <pkpatel@cs.stanford.edu>
-//
 package Chat;
 
 // Java General
 import java.util.*;
-import java.math.BigInteger;
-
-// socket
 import java.net.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.io.*;
 
 // Crypto
 import java.security.*;
-import java.security.cert.*;
-import java.security.spec.*;
-import java.security.interfaces.*;
-import javax.crypto.*;
-import javax.crypto.spec.*;
-import javax.crypto.interfaces.*;
-import javax.security.auth.x500.*;
-import javax.xml.bind.DatatypeConverter;
-//import sun.security.x509.*;
 
 public class ChatServer {
 
-    private Hashtable _clients;
+    // Hashtable'lar Room A ve Room B icin kullanici recordlarini tutarlar.
     private Hashtable _clientsRoomA;
     private Hashtable _clientsRoomB;
+
+    /* A ve B odalarinin simetrik anahtarlari String seklinde tanimlanmistir.
+     * Daha sonra bu keyler kullanici hangi odaya login olduysa ona gonderilecektir.
+     */
     private String roomA_Key = "01234567890123456789012345678901";
     private String roomB_Key = "98765432109876543210987654321098";
     private int _clientID = 0;
     private int _port;
     private String _hostName = null;
-    // Some hints: security related fields.
-    private String SERVER_KEYSTORE = "serverKeys";
-    private char[] SERVER_KEYSTORE_PASSWORD = "123456".toCharArray();
-    private char[] SERVER_KEY_PASSWORD = "123456".toCharArray();
+
     private ServerSocket _serverSocket = null;
-    private SecureRandom secureRandom;
-    private KeyStore serverKeyStore;
+
+    //Bu dictionaryde kullanici isimleri ve karsisinda bu kullanicilara ait sifrelerin 15 kez Hashli halleri tutulmaktadir.
     private String[][] keyDictionary = new String[5][2];
+
+    //Private ve Public key Server tarafindan ilk acilista olusturulur.
     private PrivateKey priv;
     private PublicKey pub;
-//    private KeyManagerFactory keyManagerFactory;
-//    private TrustManagerFactory trustManagerFactory;
     PrintWriter _out = null;
 
     public ChatServer(int port) throws NoSuchAlgorithmException, NoSuchProviderException, FileNotFoundException, IOException {
 
-        //keys and hashes
+        /* 1. sutunda kullanici adi
+    	 * 2. sutunda passwordun 15 kez Hashli hali bulunmakta
+    	 * (Password ile kullanici adi aynidir.)
+    	 * Sadece cs470, cs471, cs472, cs473 ve cs474 adli kullanicilar kayitli halde bulunmakta.
+         */
         keyDictionary[0][0] = "cs470";
         keyDictionary[0][1] = "1f6488a959bba9dd4e02aa2031fe0516b5d6db9b";
         keyDictionary[1][0] = "cs471";
@@ -66,8 +50,12 @@ public class ChatServer {
         keyDictionary[3][1] = "3ee7f460090dba4eef9574511cd926a00aabcf76";
         keyDictionary[4][0] = "cs474";
         keyDictionary[4][1] = "5a1b9d140572d7eec4776d359c3209e295b1f2fe";
+
+        /* Private ve public key cifti olusturulur.
+         * RSA 2048 bit kullanilmaktadir.
+         * Sonrasinda public key, clientlar tarafindan okunmak uzere dosyaya yazilir.
+         */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
         keyGen.initialize(2048);
         KeyPair pair = keyGen.generateKeyPair();
         priv = pair.getPrivate();
@@ -78,7 +66,6 @@ public class ChatServer {
         keyfos.close();
         try {
 
-            _clients = new Hashtable();
             _clientsRoomA = new Hashtable();
             _clientsRoomB = new Hashtable();
             _serverSocket = null;
@@ -139,9 +126,11 @@ public class ChatServer {
             System.out.println("ChatServer is running on "
                     + _hostName + " port " + _port);
 
+            //Server'a baglanmak isteyen clientin ID'si ve o ID'ye atadigimiz random sayiyi tutuyoruz.
             String clientID = "";
             int randomInt = 0;
             int connectionStage = 0;
+
             while (true) {
 
                 Socket socket = _serverSocket.accept();
@@ -152,44 +141,43 @@ public class ChatServer {
 
                 String line = _in.readLine();
 
-                //Hello mesaj� ve clientIdyi al�rsa
+                /* Hello mesaji geldiyse ve clientIDyi alirsa:
+                 * Random bir integer yaratilip server'a gonderilir.
+                 * Eger kullanici sistemde bulunmassa 77777 gonderilir.
+                 * Client 77777 gorurse gecersiz kullanici oldugunu anlar.
+                 */
                 if (connectionStage == 0 && line.length() > 5 && line.substring(0, 5).equals("Hello")) {
                     Random randomGenerator = new Random();
                     randomInt = randomGenerator.nextInt(65536);
                     clientID = line.substring(5);
-                    System.out.println("1" + line);
 
                     String clientExist = findInKeyDictionary(clientID);
                     if (!clientExist.equals("Unknown User")) {
                         _out.println(randomInt);
                         connectionStage++;
+                    } else {
+                        _out.println("77777");
+                        socket.close();
+                        continue;
                     }
                 }
 
                 line = _in.readLine();
-                System.out.println("2" + line + "  " + line.length());
-                // line=line.substring(0,line.length()-1);
-                //Public ile sifrelenmis bilgileri al�rsa >10 ilk hello mesaj�yla jarismasin diye, sacma olabilir...
+
+                /* Public ile sifrelenmis bir metin gelmisse bu metin decrypt edilir.
+                 * Ardindan ilk parca olan random int ile xorlanmis ardindan hashlanmis kisim karsilastirilir.
+                 * Eger ayniysa kullanici istedigi odaya katilabilir.
+                 * Gecici anahtar bu ilk kismin ilk 32 karakteri secilir.
+                 */
                 if (connectionStage == 1 && line.length() > 5) {
-                    System.out.println("3");
-
                     String decrypted = CipherAct.decryptWithPrivate(line, priv);
-                    System.out.println("4");
                     if (decrypted.length() == 41) {
-                        System.out.println(decrypted);
-
                         String clientFirstPart = decrypted.substring(0, 40);
                         String clientSecondPart = decrypted.substring(40);
-                        System.out.println(clientFirstPart);
-
-                        System.out.println(clientSecondPart);
-
                         String passHash = findInKeyDictionary(clientID);
                         String serverFirstPart = CipherAct.sha1(CipherAct.xor(passHash, randomInt + ""));
-                        System.out.println("CLIENT SECOND PART : " + clientSecondPart);
 
                         if (clientFirstPart.equals(serverFirstPart) && clientSecondPart.contains("A")) {
-                            System.out.println("A ya koyduk");
                             String encryptedRoomKey = CipherAct.encrypt(roomA_Key, serverFirstPart.substring(0, 32));
                             ClientRecord clientRecord = new ClientRecord(socket);
                             _clientsRoomA.put(new Integer(_clientID++), clientRecord);
@@ -199,8 +187,6 @@ public class ChatServer {
                             connectionStage = 0;
                             thread.start();
                         } else if (clientFirstPart.equals(serverFirstPart) && clientSecondPart.contains("B")) {
-                            System.out.println("B ya koyduk");
-
                             String encryptedRoomKey = CipherAct.encrypt(roomB_Key, serverFirstPart.substring(0, 32));
                             ClientRecord clientRecord = new ClientRecord(socket);
                             _clientsRoomB.put(new Integer(_clientID++), clientRecord);
@@ -209,6 +195,10 @@ public class ChatServer {
                             clientID = "";
                             connectionStage = 0;
                             thread.start();
+                        } else {
+                            _out.println("88888");
+                            socket.close();
+                            continue;
                         }
                     }
                 }
@@ -236,10 +226,6 @@ public class ChatServer {
             }
         }
         return "Unknown User";
-    }
-
-    public Hashtable getClientRecords() {
-        return _clients;
     }
 
     public Hashtable getClientRecordsA() {
