@@ -32,8 +32,7 @@ public class ChatClientThread extends Thread {
     private ChatClient _client;
     private JTextArea _outputArea;
     private Socket _socket = null;
-    private static final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
-    private static SecretKey secretKey;
+    private String roomKey;
 
     public ChatClientThread(ChatClient client) {
 
@@ -41,6 +40,7 @@ public class ChatClientThread extends Thread {
         _client = client;
         _socket = client.getSocket();
         _outputArea = client.getOutputArea();
+        roomKey = client.getRoomKey();
     }
 
     public void run() {
@@ -52,17 +52,16 @@ public class ChatClientThread extends Thread {
                             _socket.getInputStream()));
 
             String receivedMsg;
+            String line = "";
+
             String secretKeyString = "";
+          
 
             while ((receivedMsg = in.readLine()) != null) {
-                try (BufferedReader br = new BufferedReader(new FileReader("secretKeyString.txt"))) {
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        secretKeyString = line;
-                    }
-                }
+                System.out.println("receivedMsg" + receivedMsg);
+
                 System.out.println("SecretKeyEncoded" + secretKeyString);
-                String hmac = calculateRFC2104HMAC((secretKeyString + calculateRFC2104HMAC(secretKeyString + receivedMsg.substring(0, receivedMsg.length() - 40), secretKeyString)), secretKeyString);
+                String hmac = CipherAct.calculateRFC2104HMAC((roomKey + CipherAct.calculateRFC2104HMAC(roomKey + receivedMsg.substring(0, receivedMsg.length() - 40), roomKey)), roomKey);
                 String receivedEncryptedMsg = receivedMsg.substring(0, receivedMsg.length() - 40);
                 String receivedHash = receivedMsg.substring(receivedEncryptedMsg.length(), receivedMsg.length());
                 System.out.println("Received Full Message : " + receivedMsg);
@@ -70,8 +69,8 @@ public class ChatClientThread extends Thread {
                 System.out.println("Received Encrypted Message : " + receivedEncryptedMsg);
 
                 if (receivedHash.equals(hmac)) {
-                    String decryptedMessage = decrypt(receivedEncryptedMsg.toCharArray());
-                    System.out.println("Decrypted : " + decrypt(receivedEncryptedMsg.toCharArray()));
+                    String decryptedMessage = new String(CipherAct.decrypt(receivedEncryptedMsg, roomKey));
+                    System.out.println("Decrypted : " + new String(CipherAct.decrypt(receivedEncryptedMsg, roomKey)));
                     System.out.println("Received Hash : " + receivedHash);
                     System.out.println("Calculated Hash : " + hmac);
                     System.out.println("Hashes are same! Decrypted Message and hash will be sent to chat screen");
@@ -99,47 +98,4 @@ public class ChatClientThread extends Thread {
 
     }
 
-    public static String decrypt(char[] encryptedText) throws Exception {
-        Path path = Paths.get("ivbytes");
-        byte[] ivBytes = Files.readAllBytes(path);
-        path = Paths.get("secretKey");
-        byte[] getEncoded = Files.readAllBytes(path);
-
-        byte[] encryptedTextBytes = DatatypeConverter.parseBase64Binary(new String(encryptedText));
-        SecretKeySpec secretSpec = new SecretKeySpec(getEncoded, "AES");
-
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        cipher.init(Cipher.DECRYPT_MODE, secretSpec, new IvParameterSpec(ivBytes));
-
-        byte[] decryptedTextBytes = null;
-
-        try {
-            decryptedTextBytes = cipher.doFinal(encryptedTextBytes);
-        } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        }
-
-        return new String(decryptedTextBytes);
-
-    }
-
-    private static String toHexString(byte[] bytes) {
-        Formatter formatter = new Formatter();
-
-        for (byte b : bytes) {
-            formatter.format("%02x", b);
-        }
-
-        return formatter.toString();
-    }
-
-    public static String calculateRFC2104HMAC(String data, String key)
-            throws SignatureException, NoSuchAlgorithmException, InvalidKeyException {
-        SecretKeySpec signingKey = new SecretKeySpec(key.getBytes(), HMAC_SHA1_ALGORITHM);
-        Mac mac = Mac.getInstance(HMAC_SHA1_ALGORITHM);
-        mac.init(signingKey);
-        return toHexString(mac.doFinal(data.getBytes()));
-    }
 }

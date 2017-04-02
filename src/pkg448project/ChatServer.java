@@ -11,6 +11,10 @@ import java.math.BigInteger;
 
 // socket
 import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.io.*;
 
 // Crypto
@@ -28,11 +32,11 @@ import javax.xml.bind.DatatypeConverter;
 public class ChatServer {
 
     private Hashtable _clients;
-//      private Hashtable _clientsRoomA;
-//      private Hashtable _clientsRoomB;
-    private int _clientID = 0;
     private Hashtable _clientsRoomA;
     private Hashtable _clientsRoomB;
+    private String roomA_Key = "01234567890123456789012345678901";
+    private String roomB_Key = "98765432109876543210987654321098";
+    private int _clientID = 0;
     private int _port;
     private String _hostName = null;
     // Some hints: security related fields.
@@ -43,8 +47,8 @@ public class ChatServer {
     private SecureRandom secureRandom;
     private KeyStore serverKeyStore;
     private String[][] keyDictionary = new String[5][2];
-    PrivateKey priv;
-    PublicKey pub;
+    private PrivateKey priv;
+    private PublicKey pub;
 //    private KeyManagerFactory keyManagerFactory;
 //    private TrustManagerFactory trustManagerFactory;
     PrintWriter _out = null;
@@ -62,9 +66,9 @@ public class ChatServer {
         keyDictionary[3][1] = "3ee7f460090dba4eef9574511cd926a00aabcf76";
         keyDictionary[4][0] = "cs474";
         keyDictionary[4][1] = "5a1b9d140572d7eec4776d359c3209e295b1f2fe";
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DSA", "SUN");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
-        keyGen.initialize(1024, random);
+        keyGen.initialize(2048);
         KeyPair pair = keyGen.generateKeyPair();
         priv = pair.getPrivate();
         pub = pair.getPublic();
@@ -75,6 +79,8 @@ public class ChatServer {
         try {
 
             _clients = new Hashtable();
+            _clientsRoomA = new Hashtable();
+            _clientsRoomB = new Hashtable();
             _serverSocket = null;
             _clientID = -1;
             _port = port;
@@ -133,6 +139,9 @@ public class ChatServer {
             System.out.println("ChatServer is running on "
                     + _hostName + " port " + _port);
 
+            String clientID = "";
+            int randomInt = 0;
+            int connectionStage = 0;
             while (true) {
 
                 Socket socket = _serverSocket.accept();
@@ -140,36 +149,70 @@ public class ChatServer {
                 BufferedReader _in = new BufferedReader(
                         new InputStreamReader(
                                 socket.getInputStream()));
-                String line;
-                boolean connectionEstablished = false;
-                while (!connectionEstablished) {
-                    while ((line = _in.readLine()) != null) {
-                        System.out.println(line);
-                        connectionEstablished = true;
-                        if (line.contains("Hello")) {
-                            Random randomGenerator = new Random();
-                            int randomInt = randomGenerator.nextInt(65536);
-                            _out.println(randomInt);
-                            break;
-                        }
 
+                String line = _in.readLine();
+
+                //Hello mesaj� ve clientIdyi al�rsa
+                if (connectionStage == 0 && line.length() > 5 && line.substring(0, 5).equals("Hello")) {
+                    Random randomGenerator = new Random();
+                    randomInt = randomGenerator.nextInt(65536);
+                    clientID = line.substring(5);
+                    System.out.println("1" + line);
+
+                    String clientExist = findInKeyDictionary(clientID);
+                    if (!clientExist.equals("Unknown User")) {
+                        _out.println(randomInt);
+                        connectionStage++;
                     }
-
-                    while ((line = _in.readLine()) != null) {
-                        System.out.println(line);
-                        break;
-
-                    }
-                    System.out.println("Connection is granted");
-
                 }
-                System.out.println("Ciktim");
 
-                ClientRecord clientRecord = new ClientRecord(socket);
-                _clients.put(new Integer(_clientID++), clientRecord);
-                ChatServerThread thread = new ChatServerThread(this, socket);
+                line = _in.readLine();
+                System.out.println("2" + line + "  " + line.length());
+                // line=line.substring(0,line.length()-1);
+                //Public ile sifrelenmis bilgileri al�rsa >10 ilk hello mesaj�yla jarismasin diye, sacma olabilir...
+                if (connectionStage == 1 && line.length() > 5) {
+                    System.out.println("3");
 
-                thread.start();
+                    String decrypted = CipherAct.decryptWithPrivate(line, priv);
+                    System.out.println("4");
+                    if (decrypted.length() == 41) {
+                        System.out.println(decrypted);
+
+                        String clientFirstPart = decrypted.substring(0, 40);
+                        String clientSecondPart = decrypted.substring(40);
+                        System.out.println(clientFirstPart);
+
+                        System.out.println(clientSecondPart);
+
+                        String passHash = findInKeyDictionary(clientID);
+                        String serverFirstPart = CipherAct.sha1(CipherAct.xor(passHash, randomInt + ""));
+                        System.out.println("CLIENT SECOND PART : " + clientSecondPart);
+
+                        if (clientFirstPart.equals(serverFirstPart) && clientSecondPart.contains("A")) {
+                            System.out.println("A ya koyduk");
+                            String encryptedRoomKey = CipherAct.encrypt(roomA_Key, serverFirstPart.substring(0, 32));
+                            ClientRecord clientRecord = new ClientRecord(socket);
+                            _clientsRoomA.put(new Integer(_clientID++), clientRecord);
+                            _out.println(encryptedRoomKey);
+                            ChatServerThread thread = new ChatServerThread(this, socket);
+                            clientID = "";
+                            connectionStage = 0;
+                            thread.start();
+                        } else if (clientFirstPart.equals(serverFirstPart) && clientSecondPart.contains("B")) {
+                            System.out.println("B ya koyduk");
+
+                            String encryptedRoomKey = CipherAct.encrypt(roomB_Key, serverFirstPart.substring(0, 32));
+                            ClientRecord clientRecord = new ClientRecord(socket);
+                            _clientsRoomB.put(new Integer(_clientID++), clientRecord);
+                            _out.println(encryptedRoomKey);
+                            ChatServerThread thread = new ChatServerThread(this, socket);
+                            clientID = "";
+                            connectionStage = 0;
+                            thread.start();
+                        }
+                    }
+                }
+
             }
 
             //_serverSocket.close();
@@ -186,19 +229,32 @@ public class ChatServer {
         }
     }
 
-    public Hashtable getClientRecords() {
+    public String findInKeyDictionary(String clientID) {
+        for (int i = 0; i < keyDictionary.length; i++) {
+            if (keyDictionary[i][0].equals(clientID)) {
+                return keyDictionary[i][1];
+            }
+        }
+        return "Unknown User";
+    }
 
+    public Hashtable getClientRecords() {
         return _clients;
     }
 
     public Hashtable getClientRecordsA() {
-
         return _clientsRoomA;
     }
 
     public Hashtable getClientRecordsB() {
-
         return _clientsRoomB;
     }
 
+    public String getRoomKeyA() {
+        return roomA_Key;
+    }
+
+    public String getRoomKeyB() {
+        return roomB_Key;
+    }
 }

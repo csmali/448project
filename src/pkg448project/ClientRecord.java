@@ -31,4 +31,10 @@ public class ClientRecord {
 
         return _socket;
     }
+
+    public String toString() {
+        return _socket.toString();
+
+    }
+
 }

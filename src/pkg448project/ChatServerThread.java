@@ -6,7 +6,6 @@
 package Chat;
 
 // Java
-import static Chat.ChatClient.calculateRFC2104HMAC;
 import java.util.*;
 import java.math.BigInteger;
 
@@ -34,6 +33,8 @@ public class ChatServerThread extends Thread {
     private ChatServer _server = null;
     private Hashtable _recordsA = null;
     private Hashtable _recordsB = null;
+    private String roomKeyA = "";
+    private String roomKeyB = "";
     private Hashtable _recordsSending = null;
 
     private static final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
@@ -45,24 +46,6 @@ public class ChatServerThread extends Thread {
     static SecretKey secretKey;
     ClientRecord clientRecord;
 
-    private static String toHexString(byte[] bytes) {
-        Formatter formatter = new Formatter();
-
-        for (byte b : bytes) {
-            formatter.format("%02x", b);
-        }
-
-        return formatter.toString();
-    }
-
-    public static String calculateRFC2104HMAC(String data, String key)
-            throws SignatureException, NoSuchAlgorithmException, InvalidKeyException {
-        SecretKeySpec signingKey = new SecretKeySpec(key.getBytes(), HMAC_SHA1_ALGORITHM);
-        Mac mac = Mac.getInstance(HMAC_SHA1_ALGORITHM);
-        mac.init(signingKey);
-        return toHexString(mac.doFinal(data.getBytes()));
-    }
-
     public ChatServerThread(ChatServer server, Socket socket) {
 
         super("ChatServerThread");
@@ -71,7 +54,19 @@ public class ChatServerThread extends Thread {
         _recordsA = server.getClientRecordsA();
         _recordsB = server.getClientRecordsB();
         clientRecord = new ClientRecord(socket);
+        roomKeyA = server.getRoomKeyA();
+        roomKeyB = server.getRoomKeyB();
+    }
 
+    public boolean isINARecords(ClientRecord clientRecord) {
+        Enumeration theClients = _recordsA.elements();
+        while (theClients.hasMoreElements()) {
+            ClientRecord c = (ClientRecord) theClients.nextElement();
+            if (c.toString().equals(clientRecord.toString())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void run() {
@@ -84,32 +79,38 @@ public class ChatServerThread extends Thread {
 
             String receivedMsg;
             String secretKeyString = "";
-
+            String AorB = "A";
             while ((receivedMsg = in.readLine()) != null) {
+                System.out.println("clientRecord");
 
-                if (_recordsA.contains(clientRecord)) {
+                System.out.println(clientRecord.toString());
+
+                if (isINARecords(clientRecord)) {
                     _recordsSending = _recordsA;
+                    AorB = "A";
                 } else {
                     _recordsSending = _recordsB;
+                    AorB = "B";
 
                 }
+
                 Enumeration theClients = _recordsSending.elements();
 
                 while (theClients.hasMoreElements()) {
-
+                    System.out.println(receivedMsg);
                     ClientRecord c = (ClientRecord) theClients.nextElement();
 
                     Socket socket = c.getClientSocket();
-                    try (BufferedReader br = new BufferedReader(new FileReader("secretKeyString.txt"))) {
-                        String line;
-                        while ((line = br.readLine()) != null) {
-                            secretKeyString = line;
-                        }
-                    }
-                    System.out.println("SecretKeyEncoded" + secretKeyString);
 
                     PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                    String hmac = calculateRFC2104HMAC((secretKeyString + calculateRFC2104HMAC(secretKeyString + receivedMsg.substring(0, receivedMsg.length() - 40), secretKeyString)), secretKeyString);
+                    String hmac = "";
+
+                    if (AorB.equals("A")) {
+                        hmac = CipherAct.calculateRFC2104HMAC((roomKeyA + CipherAct.calculateRFC2104HMAC(roomKeyA + receivedMsg.substring(0, receivedMsg.length() - 40), roomKeyA)), roomKeyA);
+                    } else {
+                        hmac = CipherAct.calculateRFC2104HMAC((roomKeyB + CipherAct.calculateRFC2104HMAC(roomKeyB + receivedMsg.substring(0, receivedMsg.length() - 40), roomKeyB)), roomKeyB);
+                    }
+
                     String receivedEncryptedMsg = receivedMsg.substring(0, receivedMsg.length() - 40);
                     String receivedHash = receivedMsg.substring(receivedEncryptedMsg.length(), receivedMsg.length());
                     System.out.println("Received Full Message : " + receivedMsg);

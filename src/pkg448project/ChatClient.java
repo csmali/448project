@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import java.net.*;
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,6 +31,7 @@ import java.security.cert.*;
 import java.security.spec.*;
 import java.security.interfaces.*;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Formatter;
 import javax.crypto.*;
 import javax.crypto.spec.*;
@@ -58,36 +60,13 @@ public class ChatClient {
     KeyStore clientKeyStore;
     KeyStore caKeyStore;
 
-    private static String salt;
-    private static int iterations = 65536;
-    private static int keySize = 256;
-    private static byte[] ivBytes;
-    private static SecretKey secretKey;
-//    KeyManagerFactory keyManagerFactory;
+    private String roomKey = "";
+
+    //    KeyManagerFactory keyManagerFactory;
 //    TrustManagerFactory trustManagerFactory;
     //  ChatClient Constructor
     //
     //  empty, as you can see.
-    private static final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
-
-    private static String toHexString(byte[] bytes) {
-        Formatter formatter = new Formatter();
-
-        for (byte b : bytes) {
-            formatter.format("%02x", b);
-        }
-
-        return formatter.toString();
-    }
-
-    public static String calculateRFC2104HMAC(String data, String key)
-            throws SignatureException, NoSuchAlgorithmException, InvalidKeyException {
-        SecretKeySpec signingKey = new SecretKeySpec(key.getBytes(), HMAC_SHA1_ALGORITHM);
-        Mac mac = Mac.getInstance(HMAC_SHA1_ALGORITHM);
-        mac.init(signingKey);
-        return toHexString(mac.doFinal(data.getBytes()));
-    }
-
     public ChatClient() {
 
         _loginName = null;
@@ -171,7 +150,8 @@ public class ChatClient {
     public int connect(String loginName, char[] password,
             String keyStoreName, char[] keyStorePassword,
             String caHost, int caPort,
-            String serverHost, int serverPort,String serverRoom) {
+            String serverHost, int serverPort,
+            String room) {
 
         try {
 
@@ -189,31 +169,41 @@ public class ChatClient {
 
             _in = new BufferedReader(new InputStreamReader(
                     _socket.getInputStream()));
+
             _out.println("Hello" + loginName);
-            String line;
+
+            String line = "";
             int randomX = 0;
-            String randomX2String;
+            String finalHash = "";
             boolean connectionEstablished = false;
+            int connectionStage = 0;
+            String tempKey = "";
             while (!connectionEstablished) {
-                while ((line = _in.readLine()) != null) {
+
+                //Eger random int gelmi�se
+                if (connectionStage == 0 && (line = _in.readLine()) != null) {
+                    System.out.println(line);
+
                     randomX = Integer.parseInt(line);
+                    String str = String.valueOf(password);
+                    for (int i = 0; i < 15; i++) {
+                        str = CipherAct.sha1(str);
+                    }
+                    finalHash = CipherAct.sha1(CipherAct.xor(str, randomX + ""));
+                    String encrypted = CipherAct.encryptWithPublic(finalHash + room);
+                    System.out.println("" + encrypted);
+                    tempKey = new String(encrypted);
+                    System.out.println(encrypted.length() + "  tempkeylength");
+                    connectionStage++;
+                    _out.println(encrypted);
+                } //Sifreli bir sekilde roomKey gelmi�se
+                else if (connectionStage == 1 && (line = _in.readLine()) != null) {
+                    System.out.println("DECRYPTION KEY" + finalHash.substring(0, 32));
+                    roomKey = new String(CipherAct.decrypt(line, finalHash.substring(0, 32)));
+                    System.out.println("roomKey" + roomKey);
                     connectionEstablished = true;
-                    break;
+                    connectionStage = 0;
                 }
-
-                String str = String.valueOf(password);
-                String finalHash = str;
-                for (int i = 0; i < 15; i++) {
-                    finalHash = sha1(finalHash);
-                }
-                randomX2String = randomX + "";
-
-                Path path = Paths.get("serverPublicKey");
-                byte[] getEncoded = Files.readAllBytes(path);
-                _out.println(xor(finalHash, randomX2String));
-
-           //     sign(xor(finalHash, randomX2String), getEncoded);
-
             }
 
             _layout.show(_appFrame.getContentPane(), "ChatRoom");
@@ -258,26 +248,17 @@ public class ChatClient {
         try {
             msg = msg.substring(0, msg.length() - 1);
             msg = _loginName + "> " + msg;
-            salt = getSalt();
 
-            char[] message = msg.toCharArray();
-            String encryptedMessage = encrypt(message);
-            String secretKeyString = "";
+            String encryptedMsg = CipherAct.encrypt(msg, roomKey);
+            String encrypted = encryptedMsg;
 
-            try (BufferedReader br = new BufferedReader(new FileReader("secretKeyString.txt"))) {
-                String line;
-                while ((line = br.readLine()) != null) {
-                    secretKeyString = line;
-                }
-            }
-            System.out.println("Message: " + String.valueOf(message));
-            System.out.println("Encrypted: " + encryptedMessage);
-            String hmac = calculateRFC2104HMAC((secretKeyString + calculateRFC2104HMAC(secretKeyString + encryptedMessage, secretKeyString)), secretKeyString);
+            String hmac = CipherAct.calculateRFC2104HMAC((roomKey + CipherAct.calculateRFC2104HMAC(roomKey + encrypted, roomKey)), roomKey);
 
-            msg = encryptedMessage + hmac;
-            System.out.println(msg);
+            encrypted = new String(encrypted) + hmac;
+            System.out.println("msg" + msg);
+            System.out.println("encrypted" + encrypted);
 
-            _out.println(msg);
+            _out.println(encrypted);
 
         } catch (Exception e) {
 
@@ -297,75 +278,7 @@ public class ChatClient {
         return _chatPanel.getOutputArea();
     }
 
-    public static String getSalt() throws Exception {
-
-        SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
-        byte[] salt = new byte[20];
-        sr.nextBytes(salt);
-        return new String(salt);
-
+    public String getRoomKey() {
+        return roomKey;
     }
-
-    public static String encrypt(char[] plaintext) throws Exception {
-        byte[] saltBytes = salt.getBytes();
-
-        SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-        PBEKeySpec spec = new PBEKeySpec(plaintext, saltBytes, iterations, keySize);
-        secretKey = skf.generateSecret(spec);
-        SecretKeySpec secretSpec = new SecretKeySpec(secretKey.getEncoded(), "AES");
-
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        cipher.init(Cipher.ENCRYPT_MODE, secretSpec);
-        AlgorithmParameters params = cipher.getParameters();
-        ivBytes = params.getParameterSpec(IvParameterSpec.class).getIV();
-        byte[] encryptedTextBytes = cipher.doFinal(String.valueOf(plaintext).getBytes("UTF-8"));
-        try (PrintWriter out = new PrintWriter("secretKeyString.txt")) {
-            out.println(secretKey.getEncoded());
-        }
-        FileOutputStream fos = new FileOutputStream("ivbytes");
-        fos.write(ivBytes);
-        fos.close();
-        fos = new FileOutputStream("secretKey");
-        fos.write(secretKey.getEncoded());
-        fos.close();
-        return DatatypeConverter.printBase64Binary(encryptedTextBytes);
-    }
-/*
-    public static String sign(char[] plaintext,byte[] array) throws Exception {
-
-        SecretKeySpec secretSpec = new SecretKeySpec(array, "AES");
-
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        cipher.init(Cipher.ENCRYPT_MODE, secretSpec);
-        AlgorithmParameters params = cipher.getParameters();
-        ivBytes = params.getParameterSpec(IvParameterSpec.class).getIV();
-        byte[] encryptedTextBytes = cipher.doFinal(String.valueOf(plaintext).getBytes("UTF-8"));
-        try (PrintWriter out = new PrintWriter("secretKeyString.txt")) {
-            out.println(secretKey.getEncoded());
-        }
-        FileOutputStream fos = new FileOutputStream("ivbytes");
-    
-        return DatatypeConverter.printBase64Binary(encryptedTextBytes);
-    }*/
-
-    public static String sha1(String input) throws NoSuchAlgorithmException {
-        MessageDigest mDigest = MessageDigest.getInstance("SHA1");
-        byte[] result = mDigest.digest(input.getBytes());
-        StringBuffer sb = new StringBuffer();
-        for (int i = 0; i < result.length; i++) {
-            sb.append(Integer.toString((result[i] & 0xff) + 0x100, 16).substring(1));
-        }
-
-        return sb.toString();
-    }
-
-    public static String xor(String s, String key) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            sb.append((char) (s.charAt(i) ^ key.charAt(i % key.length())));
-        }
-        String result = sb.toString();
-        return result;
-    }
-
 }
