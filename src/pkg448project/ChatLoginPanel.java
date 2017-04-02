@@ -6,7 +6,7 @@
 //  GUI class for the login panel.
 //
 //  You should not have to modify this class.
-package Chat;
+package pkg448project;
 
 import java.awt.*;
 import java.awt.event.*;

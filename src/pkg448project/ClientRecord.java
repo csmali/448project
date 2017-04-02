@@ -1,5 +1,5 @@
 //  ClientRecord.java
-package Chat;
+package pkg448project;
 
 // Java
 import java.util.*;

@@ -5,7 +5,7 @@
 //  GUI class for the chat room.
 //
 //  You should not need to modify this class.
-package Chat;
+package pkg448project;
 
 import java.awt.*;
 import java.awt.event.*;

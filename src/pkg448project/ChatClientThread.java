@@ -3,7 +3,7 @@
  *  Part of implementation of the ChatClient to receive
  *  all the messages posted to the chat room.
  */
-package Chat;
+package pkg448project;
 
 // socket
 import java.net.*;

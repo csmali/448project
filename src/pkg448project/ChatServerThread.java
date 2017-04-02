@@ -3,7 +3,7 @@
 // created 02/18/03 by Ting Zhang
 // Modified : Priyank K. Patel <pkpatel@cs.stanford.edu>
 //
-package Chat;
+package pkg448project;
 
 // Java
 import java.util.*;

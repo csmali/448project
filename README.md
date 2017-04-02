@@ -3,6 +3,10 @@
 Esref Oguzhan Yildirim 121101005
 Muhammed Ali Yurdagul 131101008
 
+Server run edilir ..
+Clientlar run edilir ..
+
+
 Uygulamayi kullanmak isteyen kullanici login ekranindan asagidaki user:password ciftlerinden birini kullanir
 
 cs470:cs470

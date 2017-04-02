@@ -1,4 +1,4 @@
-package Chat;
+package pkg448project;
 
 //  AWT/Swing
 import java.awt.*;
