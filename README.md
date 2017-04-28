@@ -43,5 +43,3 @@ server MAC hesaplayip dogrularsa bu mesaji kaynak clientin bulundugu odadakilere
 roomdaki kullanicilar MAC degerini dogrularlarsa mesaji room keyler ile decrypt ederek okurlar.
 
 Kullanici adi sifre kombinasyonu eger serverda bulunmuyorsa server authentication yapmaz.
-
-# EncryptedMessageService
