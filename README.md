@@ -44,3 +44,4 @@ roomdaki kullanicilar MAC degerini dogrularlarsa mesaji room keyler ile decrypt 
 
 Kullanici adi sifre kombinasyonu eger serverda bulunmuyorsa server authentication yapmaz.
 
+# EncryptedMessageService
